@@ -12,6 +12,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -35,7 +36,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private PaintView paintView;
     private Button btnLoad;
     private Button btnSave;
+    private Button btnUndo;
+    private Button btnRedo;
     private FrameLayout fmLayout;
+   // private CircleView circleView;
     int DefaultColor;
 
     private Bitmap bm;
@@ -52,10 +56,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         paintView = findViewById(R.id.paint_view);
+      //  circleView=findViewById(R.id.circle);
         DisplayMetrics metrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
         paintView.init(metrics);
         paintView.normal();
+      //  circleView.init(metrics);
         init();
         DefaultColor=paintView.DEFAULT_COLOR;
     }
@@ -151,8 +157,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             String imagePath = (String) info.get(FileUtil.ARG_PATH);
            // results = new Uri[]{Uri.fromFile(new File(imagePath))};
             bm = BitmapFactory.decodeFile(imagePath);
+
         }
-        paintView.setbm(bm);
+        paintView.setbm(bm,fmLayout.getWidth(),fmLayout.getHeight());
 
     }
 
@@ -161,20 +168,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnLoad= findViewById(R.id.btn_load);
         btnSave = findViewById(R.id.btn_save);
         fmLayout=findViewById(R.id.frm_paint);
+        btnUndo=findViewById(R.id.btn_undo);
+        btnRedo=findViewById(R.id.btn_redo);
         btnSave.setOnClickListener(this);
+        btnUndo.setOnClickListener(this);
+        btnRedo.setOnClickListener(this);
         size.setMax(100);
         size.setProgress(25);
         size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                paintView.resize(i - 25);
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
             }
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                int i = size.getProgress();
-                paintView.resize(i - 25);
+               // int i = size.getProgress();
+              //  paintView.resize(i - 25);
             }
         });
     }
@@ -184,23 +196,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btn_save:
                 saveFrameLayout(fmLayout);
                 break;
-
+            case R.id.btn_undo:
+                paintView.undo();
+                break;
+            case R.id.btn_redo:
+                paintView.redo();
         }
     }
     //Save
 
     public  void saveFrameLayout(FrameLayout frameLayout) {
-        frameLayout.setDrawingCacheEnabled(true);
-        frameLayout.buildDrawingCache();
-        Bitmap cache = frameLayout.getDrawingCache();
+       // frameLayout.setDrawingCacheEnabled(true);
+       // frameLayout.buildDrawingCache();
+        Bitmap cache = paintView.getBMRS();
         File file = Environment.getExternalStorageDirectory();
         File dir = new File(file.getAbsolutePath() + "/DCIM/DemoSVMC");
         dir.mkdir();
         String NameFile = "" + System.currentTimeMillis();
-        File newFile = new File(dir, NameFile + ".jpg");
+        File newFile = new File(dir, NameFile + ".png");
         try {
             OutputStream fileOutputStream = new FileOutputStream(newFile);
-            cache.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
+            cache.setHasAlpha(true);
+            cache.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
             fileOutputStream.flush();
             fileOutputStream.close();
             Toast.makeText(MainActivity.this,

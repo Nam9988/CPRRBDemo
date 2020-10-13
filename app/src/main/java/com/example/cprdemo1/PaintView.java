@@ -7,9 +7,11 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.EmbossMaskFilter;
 import android.graphics.MaskFilter;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -43,11 +45,20 @@ public class PaintView extends View {
     private MaskFilter mEmboss;
     private MaskFilter mBlur;
     private Bitmap mBitmap;
-    private Bitmap mBitmap1;
+    private Bitmap mBitmap1,oldbm;
     private Canvas mCanvas;
     private Paint mBitmapPaint = new Paint(Paint.DITHER_FLAG);
     private DisplayMetrics displayMetrics;
     private int isFlood;
+
+    private Paint mPaint1;
+    private Paint mPaint2;
+    private float radius;
+    private float mX1,mY1;
+    private float oldW,oldH;
+    private float newW,newH;
+    private boolean ismove;
+
 
     public PaintView(Context context) {
         super(context);
@@ -92,43 +103,73 @@ public class PaintView extends View {
         currentColor = DEFAULT_COLOR;
         strokeWidth = BRUSH_SIZE;
         isFlood = 0;
+        this.mPaint1=new Paint();
+        this.mPaint1.setColor(Color.RED);
+        this.mPaint1.setStrokeWidth(10);
+        this.mPaint1.setStyle(Paint.Style.STROKE);
+        this.mPaint2=new Paint();
+        this.mPaint2.setColor(Color.RED);
+        this.mPaint2.setStrokeWidth(20);
 
     }
 
 
-    public void setbm(Bitmap bm) {
-
+    public void setbm(Bitmap bm,float newW,float newH) {
+        this.oldW=bm.getWidth();
+        this.oldH=bm.getHeight();
         Log.d("BM",bm.toString());
+
         ///resize
+
         mBitmap1 = bm;
-        float bmwidth = bm.getWidth();
-        float bmheigh = bm.getHeight();
-        float newwidth = 0;
-        float newhight = 0;
-        //  mBitmap1= BitmapFactory.decodeResource(getResources(),R.drawable.im);
-        if(bmwidth<displayMetrics.widthPixels&&bmheigh<displayMetrics.heightPixels){
-            float tl=bmheigh/bmwidth;
-            bmwidth=displayMetrics.widthPixels;
-            bmheigh=bmwidth*tl;
+        oldbm=bm.copy(Bitmap.Config.ARGB_8888, true);
+
+        if (newH > 0 && newH > 0) {
+            int width = bm.getWidth();
+            int height = bm.getHeight();
+            float ratioBitmap = (float) width / (float) height;
+            float ratioMax = (float) newW / (float) newH;
+
+            int finalWidth = (int)newW;
+            int finalHeight = (int)newH;
+            if (ratioMax > ratioBitmap) {
+                finalWidth = (int) ((float)newH * ratioBitmap);
+            } else {
+                finalHeight = (int) ((float)newW / ratioBitmap);
+            }
+            this.newW=(float)finalWidth;
+            this.newH=(float)finalHeight;
+            mBitmap1 = Bitmap.createScaledBitmap(mBitmap1, finalWidth, finalHeight, true);
         }
 
-
-        if (bmwidth > displayMetrics.widthPixels) {
-            newwidth = (float) displayMetrics.widthPixels;
-            newhight = bmheigh / bmwidth * newwidth;
-        }
-        if (bmheigh > displayMetrics.heightPixels) {
-            newhight = (float) displayMetrics.heightPixels;
-            newwidth = bmwidth / bmheigh * newhight;
-        }
-        if (newhight != 0 && newwidth != 0)
-            mBitmap1 = Bitmap.createScaledBitmap(mBitmap1, (int) newwidth, (int) newhight, false);
+//        float bmwidth = bm.getWidth();
+//        float bmheigh = bm.getHeight();
+//        float newwidth = 0;
+//        float newhight = 0;
+//        //  mBitmap1= BitmapFactory.decodeResource(getResources(),R.drawable.im);
+//        if(bmwidth<displayMetrics.widthPixels&&bmheigh<displayMetrics.heightPixels){
+//            float tl=bmheigh/bmwidth;
+//            bmwidth=displayMetrics.widthPixels;
+//            bmheigh=bmwidth*tl;
+//        }
+//
+//
+//        if (bmwidth > displayMetrics.widthPixels) {
+//            newwidth = (float) displayMetrics.widthPixels;
+//            newhight = bmheigh / bmwidth * newwidth;
+//        }
+//        if (bmheigh > displayMetrics.heightPixels) {
+//            newhight = (float) displayMetrics.heightPixels;
+//            newwidth = bmwidth / bmheigh * newhight;
+//        }
+//        if (newhight != 0 && newwidth != 0)
+          //  mBitmap1 = Bitmap.createScaledBitmap(bm,(int)newW  ,(int)newH , true);
 
 
         //ghep
-        mBitmap = Bitmap.createBitmap(displayMetrics.widthPixels, displayMetrics.heightPixels, Bitmap.Config.ARGB_8888);
-        mBitmap.eraseColor(Color.WHITE);
-        mBitmap1 = mergeToPin(mBitmap, mBitmap1);
+//        mBitmap = Bitmap.createBitmap(displayMetrics.widthPixels, displayMetrics.heightPixels, Bitmap.Config.ARGB_8888);
+//        mBitmap.eraseColor(Color.WHITE);
+//        mBitmap1 = mergeToPin(mBitmap, mBitmap1);
 
 
         mBitmap = Bitmap.createBitmap(mBitmap1);
@@ -222,14 +263,45 @@ public class PaintView extends View {
         }
 
         canvas.drawBitmap(mBitmap, 0, 0, null);
+        canvas.drawCircle(mX,mY,strokeWidth/2,mPaint1);
+        Log.d("Ondraw",String.valueOf(mPaint1.getColor()));
+        canvas.drawCircle(mX,mY+120,20,mPaint2);
+        Log.d("Ondraw","OnDraw");
+
+
+
         // canvas.restore();
+    }
+    public Bitmap getBMRS(){
+        Canvas ccc=new Canvas();
+        ccc.setBitmap(oldbm);
+
+        for (FingerPath fp : undoPaths) {
+            mPaint.setColor(fp.color);
+            mPaint.setStrokeWidth(fp.strokeWidth*(oldH/newH));
+            mPaint.setMaskFilter(null);
+//            if (fp.emboss)
+//                mPaint.setMaskFilter(mEmboss);
+//            else if (fp.blur) oldbm
+//                mPaint.setMaskFilter(mBlur);
+            Matrix scaleMatrix = new Matrix();
+            RectF rectF = new RectF();
+          //  fp.path.computeBounds(rectF, true);
+            scaleMatrix.setScale(oldW/newW, oldH/newH);
+            fp.path.transform(scaleMatrix);
+            mPaint.setXfermode(new PorterDuffXfermode(DST_OUT));
+            ccc.drawPath(fp.path, mPaint);
+
+        }
+        return oldbm;
     }
 
     private void touchStart(float x, float y) {
         mPath = new Path();
+        ismove=false;
         FingerPath fp = new FingerPath(currentColor, emboss, blur, strokeWidth, mPath);
         paths.add(fp);
-
+        undoPaths.add(fp);
         mPath.reset();
         mPath.moveTo(x, y);
         mX = x;
@@ -240,7 +312,7 @@ public class PaintView extends View {
     private void touchMove(float x, float y) {
         float dx = Math.abs(x - mX);
         float dy = Math.abs(y - mY);
-
+        ismove=true;
         if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
             mPath.quadTo(mX, mY, (x + mX) / 2, (y + mY) / 2);
             mX = x;
@@ -250,20 +322,25 @@ public class PaintView extends View {
 
     private void touchUp() {
         mPath.lineTo(mX, mY);
+        if(!ismove) {
+            paths.remove(paths.size() - 1);
+            undoPaths.remove(undoPaths.size()-1);
+        }
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         float x = event.getX();
         float y = event.getY();
+        Log.d("Location",x+"| "+y);
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                    touchStart(x, y);
+                    touchStart(x, y-120);
                 invalidate();
                 break;
             case MotionEvent.ACTION_MOVE:
-                    touchMove(x, y);
+                    touchMove(x, y-120);
                     invalidate();
                 break;
             case MotionEvent.ACTION_UP:
@@ -273,7 +350,7 @@ public class PaintView extends View {
                 bitmaps.add(temp);
                 mCanvas.setBitmap(mBitmap);
                // Toast.makeText(getContext(), String.valueOf(paths.size()), Toast.LENGTH_SHORT).show();
-                paths.clear();
+            //    paths.clear();
                 break;
         }
 
@@ -286,6 +363,7 @@ public class PaintView extends View {
 
     public void resize(int size) {
         strokeWidth = BRUSH_SIZE + size + 1;
+        invalidate();
     }
 
 

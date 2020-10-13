@@ -8,11 +8,6 @@ import android.os.Build;
 
 import androidx.core.content.ContextCompat;
 
-/**
- * Copyright © 2016 FStyleVN
- * Created by Sun on 23/10/2016.
- */
-
 public class PermissionUtil {
     private PermissionUtil() {
         // No-op
